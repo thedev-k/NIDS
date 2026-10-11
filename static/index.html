@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NIDS EDA Dashboard | AI-Powered Intrusion Detection</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- Plotly.js CDN -->
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <!-- Top Navigation & Header -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-badge">
+        <svg class="shield-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="app-title">NIDS Intelligence Dashboard</h1>
+        <p class="app-subtitle">CICIDS2017 Exploratory Data Analysis & Threat Profiling</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="status-indicator" id="statusIndicator">
+        <span class="status-dot"></span>
+        <span class="status-text" id="statusText">Connecting...</span>
+      </div>
+      <div class="db-badge">
+        <span class="badge-label">STORE:</span>
+        <span class="badge-value">nids_deploy.db (Read-Only)</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="dashboard-container">
+    <!-- Notice Banner for Uninitialized State -->
+    <div class="alert-banner" id="emptyStateBanner" style="display: none;">
+      <div class="alert-content">
+        <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <div>
+          <strong>Deployment Database Pending:</strong>
+          <span> Run the ETL pipeline (<code>python -m etl.run_etl</code>) to ingest flows into <code>data/nids_full.db</code> and export <code>data/nids_deploy.db</code>.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI Metric Cards Grid -->
+    <section class="kpi-grid">
+      <div class="kpi-card" id="kpiTotal">
+        <div class="kpi-icon-wrap icon-cyan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+        </div>
+        <div class="kpi-content">
+          <div class="kpi-label">Total Flows Evaluated</div>
+          <div class="kpi-value" id="valTotalFlows">-</div>
+          <div class="kpi-meta">CICIDS2017 Dataset Records</div>
+        </div>
+      </div>
+
+      <div class="kpi-card" id="kpiBenign">
+        <div class="kpi-icon-wrap icon-emerald">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        </div>
+        <div class="kpi-content">
+          <div class="kpi-label">Benign Traffic</div>
+          <div class="kpi-value" id="valBenignFlows">-</div>
+          <div class="kpi-meta" id="valBenignPct">Normal Operational Activity</div>
+        </div>
+      </div>
+
+      <div class="kpi-card" id="kpiAttack">
+        <div class="kpi-icon-wrap icon-rose">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+          </svg>
+        </div>
+        <div class="kpi-content">
+          <div class="kpi-label">Malicious Flows</div>
+          <div class="kpi-value" id="valAttackFlows">-</div>
+          <div class="kpi-meta" id="valAttackPct">Threat Detection Target (Class 1)</div>
+        </div>
+      </div>
+
+      <div class="kpi-card" id="kpiAttackTypes">
+        <div class="kpi-icon-wrap icon-purple">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+            <line x1="6" y1="6" x2="6.01" y2="6"></line>
+            <line x1="6" y1="18" x2="6.01" y2="18"></line>
+          </svg>
+        </div>
+        <div class="kpi-content">
+          <div class="kpi-label">Attack Categories</div>
+          <div class="kpi-value" id="valAttackTypes">-</div>
+          <div class="kpi-meta">DDoS, PortScan, BruteForce, etc.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Visualizations Grid -->
+    <div class="charts-layout">
+      <!-- Row 1: Class Imbalance & Attack Distribution -->
+      <section class="chart-panel col-span-12">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">1. Class Imbalance & Threat Vector Distribution</h2>
+            <p class="panel-desc">Analysis of the heavy skew between Benign flows and specific malicious attack vectors.</p>
+          </div>
+          <span class="pill-tag">PRD Section 3.6</span>
+        </div>
+        <div class="dual-chart-row">
+          <div class="sub-chart-box">
+            <h3 class="chart-subtitle">Binary Distribution (Normal vs Malicious)</h3>
+            <div id="chartBinaryDist" class="plotly-chart"></div>
+          </div>
+          <div class="sub-chart-box">
+            <h3 class="chart-subtitle">Attack Flow Counts by Threat Category</h3>
+            <div id="chartAttackBreakdown" class="plotly-chart"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Row 2: Correlation Heatmap (Full Matrix) -->
+      <section class="chart-panel col-span-12">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">2. Feature Correlation Heatmap (Real Matrix)</h2>
+            <p class="panel-desc">Full pairwise Pearson correlation matrix for the top features most correlated with <code>is_attack</code>.</p>
+          </div>
+          <span class="pill-tag cyan">Plotly Heatmap</span>
+        </div>
+        <div id="chartCorrelationHeatmap" class="plotly-chart heatmap-chart"></div>
+      </section>
+
+      <!-- Row 3: Volumetric Profiling (Scatter Plot) -->
+      <section class="chart-panel col-span-12">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">3. Volumetric Profiling: Flow Packet Rate vs. Flow Duration</h2>
+            <p class="panel-desc">Stratified sample highlighting distinctive volumetric clustering of high-rate DDoS attacks vs. benign sessions.</p>
+          </div>
+          <div class="panel-actions">
+            <span class="pill-tag purple">Stratified by Attack Label</span>
+          </div>
+        </div>
+        <div id="chartVolumetricScatter" class="plotly-chart scatter-chart"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="app-footer">
+    <div>NIDS Project Phase 1 • Programmatic Ingestion, Validation & Deployed EDA</div>
+    <div>Strictly Decoupled • Read-Only Deployment Database</div>
+  </footer>
+
+  <script src="/static/js/charts.js"></script>
+</body>
+</html>
