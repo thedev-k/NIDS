@@ -4,4 +4,5 @@ __pycache__/
 .env
 data/raw/
 data/nids_full.db
+PROJECT_NOTES.md
 
