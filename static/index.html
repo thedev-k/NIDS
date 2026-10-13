@@ -3,185 +3,290 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NIDS EDA Dashboard | AI-Powered Intrusion Detection</title>
+  <title>NIDS Intelligence Dashboard | AI-Powered Intrusion Detection</title>
+  <meta name="description" content="Network Intrusion Detection EDA Dashboard — CICIDS2017 traffic telemetry, class distribution, Pearson correlation heatmap, and volumetric profiling." />
+
+  <!-- Typography: Inter + JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <!-- Plotly.js CDN -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- GSAP Animation Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+  <!-- Plotly.js Visualization Engine -->
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+
+  <!-- Flight-Tracker Dark Material & HorizonX Bento Styles -->
   <link rel="stylesheet" href="/static/css/style.css" />
 </head>
 <body>
-  <!-- Top Navigation & Header -->
-  <header class="app-header">
-    <div class="header-left">
-      <div class="logo-badge">
-        <svg class="shield-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-        </svg>
+
+  <div class="app-container">
+
+    <!-- ====================================================================
+         1. COMPACT MODERN NAVBAR (Consolidated Header & Status Beacon)
+         ==================================================================== -->
+    <header class="navbar animate-card">
+      <div class="nav-left">
+        <div class="nav-brand-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <div class="nav-title-group">
+          <h1 class="nav-title">NIDS Intelligence</h1>
+          <span class="nav-version">v2.0 SOC</span>
+        </div>
       </div>
+
+      <!-- Integrated Dynamic Sample Notice -->
+      <div class="nav-center">
+        <div class="nav-sample-pill">
+          <span>Sample of</span>
+          <strong class="nav-sample-count" id="sampleFlowsCount">--</strong>
+          <span>flows from CICIDS2017 (2.83M)</span>
+          <span class="nav-sample-tag">STRATIFIED</span>
+          <!-- Secondary ID hook for backwards compatibility -->
+          <span id="sampleCountBanner" style="display:none;"></span>
+        </div>
+      </div>
+
+      <!-- Live Status Beacon & Data Store -->
+      <div class="nav-right">
+        <div class="nav-status-badge">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusText">CONNECTING...</span>
+        </div>
+        <div class="nav-db-badge">
+          <span>STORE:</span> nids_deploy.db
+        </div>
+      </div>
+    </header>
+
+    <!-- Empty-State Alert Banner (shown only if database missing) -->
+    <div id="emptyStateBanner" class="alert-banner" style="display:none;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;color:#f59e0b;">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
       <div>
-        <h1 class="app-title">NIDS Intelligence Dashboard</h1>
-        <p class="app-subtitle" id="headerSubtitle">Charts are based on a sample of <span id="sampleFlowsCount">--</span> flows from the 2.83 million row CICIDS2017 dataset</p>
-      </div>
-    </div>
-    <div class="header-right">
-      <div class="status-indicator" id="statusIndicator">
-        <span class="status-dot"></span>
-        <span class="status-text" id="statusText">Connecting...</span>
-      </div>
-      <div class="db-badge">
-        <span class="badge-label">STORE:</span>
-        <span class="badge-value">nids_deploy.db (Read-Only)</span>
-      </div>
-    </div>
-  </header>
-
-  <main class="dashboard-container">
-    <!-- Notice Banner for Uninitialized State -->
-    <div class="alert-banner" id="emptyStateBanner" style="display: none;">
-      <div class="alert-content">
-        <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="8" x2="12" y2="12"></line>
-          <line x1="12" y1="16" x2="12.01" y2="16"></line>
-        </svg>
-        <div>
-          <strong>Deployment Database Pending:</strong>
-          <span> Run the ETL pipeline (<code>python -m etl.run_etl</code>) to ingest flows into <code>data/nids_full.db</code> and export <code>data/nids_deploy.db</code>.</span>
-        </div>
+        <strong style="color:#fbbf24;">Deployment Database Pending:</strong>
+        Execute the ETL pipeline (<code>python -m etl.run_etl</code>) to ingest flows into SQLite.
       </div>
     </div>
 
-    <!-- Sample Notice Banner -->
-    <div class="sample-notice-banner" id="sampleNoticeBanner">
-      <div class="sample-notice-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="16" x2="12" y2="12"></line>
-          <line x1="12" y1="8" x2="12.01" y2="8"></line>
-        </svg>
-      </div>
-      <div class="sample-notice-text">
-        The dashboard charts and distributions are based on a representative sample of <span class="sample-count-badge" id="sampleCountBanner">--</span> network flows from the <strong>2.83 million row CICIDS2017 dataset</strong>.
-      </div>
-    </div>
+    <!-- ====================================================================
+         2. ASYMMETRIC BENTO GRID (True HorizonX Layout)
+         ==================================================================== -->
+    <section class="bento-kpi-grid">
 
-    <!-- KPI Metric Cards Grid -->
-    <section class="kpi-grid">
-      <div class="kpi-card" id="kpiTotal">
-        <div class="kpi-icon-wrap icon-cyan">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-          </svg>
-        </div>
-        <div class="kpi-content">
-          <div class="kpi-label">Total Flows Evaluated</div>
-          <div class="kpi-value" id="valTotalFlows">-</div>
-          <div class="kpi-meta">CICIDS2017 Dataset Records</div>
-        </div>
-      </div>
+      <!-- HERO METRIC CARD: Total Evaluated Flows (Spans 2 Rows on Desktop) -->
+      <article class="bento-card kpi-hero-card animate-card" id="kpiTotal">
+        <div class="bento-inner">
+          <div class="kpi-card-header">
+            <div class="kpi-label-group">
+              <span class="kpi-label">Total Flows Evaluated</span>
+              <span class="kpi-sublabel">Aggregated Ingestion Telemetry</span>
+            </div>
+            <span class="pill pill-neutral">CICIDS2017</span>
+          </div>
 
-      <div class="kpi-card" id="kpiBenign">
-        <div class="kpi-icon-wrap icon-emerald">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-          </svg>
-        </div>
-        <div class="kpi-content">
-          <div class="kpi-label">Benign Traffic</div>
-          <div class="kpi-value" id="valBenignFlows">-</div>
-          <div class="kpi-meta" id="valBenignPct">Normal Operational Activity</div>
-        </div>
-      </div>
+          <div>
+            <div class="kpi-metric-hero" id="valTotalFlows">—</div>
+            
+            <!-- Dynamic Telemetry Distribution Bar -->
+            <div class="telemetry-progress-wrap">
+              <div class="telemetry-progress-bar">
+                <div class="bar-segment-benign" id="kpiFlowBarBenign" style="width: 80%;"></div>
+                <div class="bar-segment-attack" id="kpiFlowBarAttack" style="width: 20%;"></div>
+              </div>
+              <div class="telemetry-labels">
+                <span class="lbl-benign" id="kpiFlowTextBenign">80.0% Benign</span>
+                <span class="lbl-attack" id="kpiFlowTextAttack">20.0% Malicious</span>
+              </div>
+            </div>
+          </div>
 
-      <div class="kpi-card" id="kpiAttack">
-        <div class="kpi-icon-wrap icon-rose">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-          </svg>
+          <div class="kpi-hero-footer">
+            <span>Stratified Sample of 2.83M Full Corpus</span>
+            <span class="pill pill-cyan">ONLINE STORE</span>
+          </div>
         </div>
-        <div class="kpi-content">
-          <div class="kpi-label">Malicious Flows</div>
-          <div class="kpi-value" id="valAttackFlows">-</div>
-          <div class="kpi-meta" id="valAttackPct">Threat Detection Target (Class 1)</div>
-        </div>
-      </div>
+      </article>
 
-      <div class="kpi-card" id="kpiAttackTypes">
-        <div class="kpi-icon-wrap icon-purple">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
-            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
-            <line x1="6" y1="6" x2="6.01" y2="6"></line>
-            <line x1="6" y1="18" x2="6.01" y2="18"></line>
-          </svg>
+      <!-- CARD 2: Malicious Threat Flows (High-Priority Threat Target) -->
+      <article class="bento-card kpi-card-compact animate-card" id="kpiAttack">
+        <div class="bento-inner">
+          <div class="kpi-card-header">
+            <div class="kpi-label-group">
+              <span class="kpi-label">Malicious Threats</span>
+              <span class="kpi-sublabel">Identified Threat Flows</span>
+            </div>
+            <span class="pill pill-rose">CLASS 1 TARGET</span>
+          </div>
+
+          <div class="kpi-metric-standard rose" id="valAttackFlows">—</div>
+
+          <div class="kpi-compact-footer">
+            <span class="footer-bullet rose"></span>
+            <span id="valAttackPct">20.00% Threat Ratio</span>
+          </div>
         </div>
-        <div class="kpi-content">
-          <div class="kpi-label">Attack Categories</div>
-          <div class="kpi-value" id="valAttackTypes">-</div>
-          <div class="kpi-meta">DDoS, PortScan, BruteForce, etc.</div>
+      </article>
+
+      <!-- CARD 3: Benign Traffic (Normal Operational Baseline) -->
+      <article class="bento-card kpi-card-compact animate-card" id="kpiBenign">
+        <div class="bento-inner">
+          <div class="kpi-card-header">
+            <div class="kpi-label-group">
+              <span class="kpi-label">Benign Traffic</span>
+              <span class="kpi-sublabel">Operational Flow Baseline</span>
+            </div>
+            <span class="pill pill-emerald">OPERATIONAL</span>
+          </div>
+
+          <div class="kpi-metric-standard emerald" id="valBenignFlows">—</div>
+
+          <div class="kpi-compact-footer">
+            <span class="footer-bullet emerald"></span>
+            <span id="valBenignPct">80.00% Normal Traffic</span>
+          </div>
         </div>
-      </div>
+      </article>
+
+      <!-- CARD 4: Attack Categories (HorizonX Wide Bento Card with Pill Badges) -->
+      <article class="bento-card kpi-wide-card animate-card" id="kpiAttackTypes">
+        <div class="bento-inner">
+          <div class="kpi-wide-metric-box">
+            <span class="kpi-label">Attack Categories</span>
+            <div class="kpi-metric-standard neutral" id="valAttackTypes">—</div>
+            <span class="kpi-sublabel">Distinct Threat Vectors Detected</span>
+          </div>
+
+          <!-- HorizonX Pill Badges for Threat Spectrum -->
+          <div class="kpi-pill-cluster">
+            <span class="pill pill-amber">DDoS</span>
+            <span class="pill pill-cyan">PortScan</span>
+            <span class="pill pill-orange">DoS Hulk</span>
+            <span class="pill pill-sky">FTP-Patator</span>
+            <span class="pill pill-indigo">SSH-Patator</span>
+            <span class="pill pill-purple">Botnet</span>
+            <span class="pill pill-pink">Web Attack</span>
+            <span class="pill pill-rose">Infiltration</span>
+          </div>
+        </div>
+      </article>
+
     </section>
 
-    <!-- Visualizations Grid -->
-    <div class="charts-layout">
-      <!-- Row 1: Class Imbalance & Attack Distribution -->
-      <section class="chart-panel col-span-12">
-        <div class="panel-header">
-          <div>
-            <h2 class="panel-title">1. Class Imbalance & Threat Vector Distribution</h2>
-            <p class="panel-desc">Analysis of the heavy skew between Benign flows and specific malicious attack vectors.</p>
-          </div>
-          <span class="pill-tag">PRD Section 3.6</span>
-        </div>
-        <div class="dual-chart-row">
-          <div class="sub-chart-box">
-            <h3 class="chart-subtitle">Binary Distribution (Normal vs Malicious)</h3>
-            <div id="chartBinaryDist" class="plotly-chart"></div>
-          </div>
-          <div class="sub-chart-box">
-            <h3 class="chart-subtitle">Attack Flow Counts by Threat Category</h3>
-            <div id="chartAttackBreakdown" class="plotly-chart"></div>
-          </div>
-        </div>
-      </section>
+    <!-- ====================================================================
+         3. CHARTS ROW 1: Donut (5fr) + Attack Vector Breakdown (7fr)
+         ==================================================================== -->
+    <section class="charts-dual-grid">
 
-      <!-- Row 2: Correlation Heatmap (Full Matrix) -->
-      <section class="chart-panel col-span-12">
-        <div class="panel-header">
-          <div>
-            <h2 class="panel-title">2. Feature Correlation Heatmap (Real Matrix)</h2>
-            <p class="panel-desc">Full pairwise Pearson correlation matrix for the top features most correlated with <code>is_attack</code>.</p>
+      <!-- Binary Class Imbalance Donut -->
+      <article class="bento-card chart-card animate-card">
+        <div class="bento-inner">
+          <div class="chart-header">
+            <div class="chart-title-area">
+              <div class="chart-title-row">
+                <h2 class="chart-title">1. Binary Class Imbalance</h2>
+                <span class="pill pill-emerald">PRD 3.6</span>
+              </div>
+              <p class="chart-desc">Proportion of Benign operational traffic vs. Malicious threat flows.</p>
+            </div>
           </div>
-          <span class="pill-tag cyan">Plotly Heatmap</span>
+          <div id="chartBinaryDist" style="width:100%;height:330px;"></div>
         </div>
-        <div id="chartCorrelationHeatmap" class="plotly-chart heatmap-chart"></div>
-      </section>
+      </article>
 
-      <!-- Row 3: Volumetric Profiling (Scatter Plot) -->
-      <section class="chart-panel col-span-12">
-        <div class="panel-header">
-          <div>
-            <h2 class="panel-title">3. Volumetric Profiling: Flow Packet Rate vs. Flow Duration</h2>
-            <p class="panel-desc">Stratified sample highlighting distinctive volumetric clustering of high-rate DDoS attacks vs. benign sessions.</p>
+      <!-- Attack Breakdown Bar Chart -->
+      <article class="bento-card chart-card animate-card">
+        <div class="bento-inner">
+          <div class="chart-header">
+            <div class="chart-title-area">
+              <div class="chart-title-row">
+                <h2 class="chart-title">Attack Flow Counts by Threat Vector</h2>
+                <span class="pill pill-amber">11 Classes</span>
+              </div>
+              <p class="chart-desc">Granular distribution of detected flows across specific cyberattack profiles.</p>
+            </div>
           </div>
-          <div class="panel-actions">
-            <span class="pill-tag purple">Stratified by Attack Label</span>
+          <!-- Left margin expanded in charts.js so labels are 100% visible -->
+          <div id="chartAttackBreakdown" style="width:100%;height:330px;"></div>
+        </div>
+      </article>
+
+    </section>
+
+    <!-- ====================================================================
+         4. CHARTS ROW 2: 13×13 Pearson Correlation Heatmap
+         ==================================================================== -->
+    <article class="bento-card chart-card-full animate-card">
+      <div class="bento-inner">
+        <div class="chart-header">
+          <div class="chart-title-area">
+            <div class="chart-title-row">
+              <h2 class="chart-title">2. Feature Correlation Heatmap</h2>
+              <span class="pill pill-cyan">13 × 13 Real Matrix</span>
+            </div>
+            <p class="chart-desc">
+              Pairwise Pearson correlation between the top 12 telemetry features most correlated with <code>is_attack</code>.
+            </p>
+          </div>
+          <div class="chart-meta-badge">
+            <span>Precomputed in</span>
+            <span class="meta-val">nids_deploy.db</span>
           </div>
         </div>
-        <div id="chartVolumetricScatter" class="plotly-chart scatter-chart"></div>
-      </section>
-    </div>
-  </main>
+        <div class="chart-scroll-wrap">
+          <div id="chartCorrelationHeatmap" style="width:100%;min-width:700px;height:520px;"></div>
+        </div>
+      </div>
+    </article>
 
-  <footer class="app-footer">
-    <div>NIDS Project Phase 1 • Programmatic Ingestion, Validation & Deployed EDA</div>
-    <div>Strictly Decoupled • Read-Only Deployment Database</div>
-  </footer>
+    <!-- ====================================================================
+         5. CHARTS ROW 3: Volumetric Profiling (Log-Log Scatter)
+         ==================================================================== -->
+    <article class="bento-card chart-card-full animate-card">
+      <div class="bento-inner">
+        <div class="chart-header">
+          <div class="chart-title-area">
+            <div class="chart-title-row">
+              <h2 class="chart-title">3. Volumetric Profiling: Flow Packet Rate vs. Flow Duration</h2>
+              <span class="pill pill-amber">Stratified by Attack Label</span>
+            </div>
+            <p class="chart-desc">
+              Log-log distribution highlighting high-rate DDoS and volumetric floods vs. low-and-slow penetration vectors.
+            </p>
+          </div>
+          <div class="chart-meta-badge">
+            <span>Sampled N =</span>
+            <span class="meta-val">5,215</span>
+          </div>
+        </div>
+        <div class="chart-scroll-wrap">
+          <div id="chartVolumetricScatter" style="width:100%;min-width:700px;height:540px;"></div>
+        </div>
+      </div>
+    </article>
 
+    <!-- ====================================================================
+         6. COMPACT MINIMAL FOOTER
+         ==================================================================== -->
+    <footer class="app-footer">
+      <div class="footer-left">
+        <span class="footer-beacon"></span>
+        <span>NIDS Intelligence Platform &bull; Phase 1 Data Ingestion &amp; Deployed EDA</span>
+      </div>
+      <div>Read-Only SQLite Ingestion Store &bull; Decoupled Static Architecture</div>
+    </footer>
+
+  </div><!-- /app-container -->
+
+  <!-- Visualization Engine & Interactions -->
   <script src="/static/js/charts.js"></script>
 </body>
 </html>
