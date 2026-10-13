@@ -8,3 +8,4 @@ PROJECT_NOTES.md
 requirements-dev.txt
 *.pdf
 *.tex
+.agents
