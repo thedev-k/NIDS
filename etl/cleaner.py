@@ -39,7 +39,7 @@ def clean_dataframe(df_raw: pd.DataFrame) -> pd.DataFrame:
     df.rename(columns=col_mapping, inplace=True)
 
     # Standardize label column name if it appears under variant names
-    for possible_label in ["label", "class", "attack_cat"]:
+    for possible_label in ["label", "class", "attack_cat", "attack_label"]:
         if possible_label in df.columns and possible_label != "label":
             df.rename(columns={possible_label: "label"}, inplace=True)
             break
@@ -47,8 +47,16 @@ def clean_dataframe(df_raw: pd.DataFrame) -> pd.DataFrame:
     if "label" not in df.columns:
         df["label"] = "BENIGN"
 
-    # Clean label text
-    df["label"] = df["label"].astype(str).str.strip()
+    # Clean label text and sanitize corrupted Unicode characters (e.g. \ufffd to hyphen)
+    df["label"] = (
+        df["label"]
+        .astype(str)
+        .str.replace("\ufffd", "-", regex=False)
+        .str.replace(r"[^\x00-\x7F]+", "-", regex=True)
+        .str.replace(r"-+", "-", regex=True)
+        .str.replace(r"\s+", " ", regex=True)
+        .str.strip()
+    )
 
     # 2. Binary target variable: 0 for BENIGN, 1 for ATTACK
     df["is_attack"] = (df["label"].str.upper() != "BENIGN").astype(int)

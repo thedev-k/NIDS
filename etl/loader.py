@@ -4,12 +4,26 @@ from typing import List, Dict, Any
 import pandas as pd
 
 
+def init_offsets_table(conn: sqlite3.Connection) -> None:
+    """Initializes etl_offsets tracking table if not present."""
+    cursor = conn.cursor()
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS etl_offsets (
+        offset INTEGER PRIMARY KEY,
+        row_count INTEGER NOT NULL,
+        inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+    conn.commit()
+
+
 def get_db_connection(db_path: Path) -> sqlite3.Connection:
     """Creates SQLite connection with performance optimizations."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(db_path))
     conn.execute("PRAGMA journal_mode = WAL;")
     conn.execute("PRAGMA synchronous = NORMAL;")
+    init_offsets_table(conn)
     return conn
 
 
@@ -60,25 +74,55 @@ def init_schema(conn: sqlite3.Connection, sample_record: Dict[str, Any]) -> None
     """
     cursor.execute(create_table_sql)
 
+    # Offset tracking table to guarantee no offset is ever inserted twice
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS etl_offsets (
+        offset INTEGER PRIMARY KEY,
+        row_count INTEGER NOT NULL,
+        inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
     # Indices
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_attack_flag ON network_flows(is_attack);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_label ON network_flows(label);")
     conn.commit()
 
 
-def load_records_idempotently(conn: sqlite3.Connection, records: List[Dict[str, Any]]) -> int:
+def is_offset_loaded(conn: sqlite3.Connection, offset: int) -> bool:
+    """Checks whether the specified dataset offset has already been inserted."""
+    init_offsets_table(conn)
+    cursor = conn.cursor()
+    cursor.execute("SELECT 1 FROM etl_offsets WHERE offset = ? LIMIT 1;", (offset,))
+    return cursor.fetchone() is not None
+
+
+def load_records_idempotently(
+    conn: sqlite3.Connection,
+    records: List[Dict[str, Any]],
+    offset: int = None
+) -> int:
     """
     Loads validated records into network_flows table idempotently using INSERT OR IGNORE.
+    If offset is provided, checks etl_offsets to ensure the same offset is never inserted twice.
     Returns the count of new rows inserted.
     """
     if not records:
         return 0
 
-    # Ensure table exists
+    # Ensure tables exist
     init_schema(conn, records[0])
 
-    # Get existing columns in table
     cursor = conn.cursor()
+
+    # Offset check: strictly prevent duplicate offset insertion
+    if offset is not None:
+        cursor.execute("SELECT 1 FROM etl_offsets WHERE offset = ? LIMIT 1;", (offset,))
+        if cursor.fetchone() is not None:
+            # Offset has already been inserted
+            return 0
+
+    # Get existing columns in table
     cursor.execute("PRAGMA table_info(network_flows);")
     table_cols = [row[1] for row in cursor.fetchall()]
 
@@ -99,6 +143,13 @@ def load_records_idempotently(conn: sqlite3.Connection, records: List[Dict[str, 
 
     initial_changes = conn.total_changes
     cursor.executemany(insert_sql, df_batch.values.tolist())
+
+    if offset is not None:
+        cursor.execute(
+            "INSERT OR IGNORE INTO etl_offsets (offset, row_count) VALUES (?, ?);",
+            (offset, len(clean_records))
+        )
+
     conn.commit()
     new_rows = conn.total_changes - initial_changes
 

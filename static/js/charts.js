@@ -56,7 +56,8 @@ async function initDashboard() {
   // Load KPI metrics
   const kpis = await fetchJSON('/api/kpis');
   if (kpis && kpis.ready) {
-    document.getElementById('valTotalFlows').textContent = formatNumber(kpis.total_flows);
+    const formattedTotal = formatNumber(kpis.total_flows);
+    document.getElementById('valTotalFlows').textContent = formattedTotal;
     document.getElementById('valBenignFlows').textContent = formatNumber(kpis.benign_count);
     document.getElementById('valAttackFlows').textContent = formatNumber(kpis.attack_count);
     document.getElementById('valAttackTypes').textContent = formatNumber(kpis.unique_attack_types);
@@ -64,6 +65,12 @@ async function initDashboard() {
     const benignPct = (100 - kpis.attack_percentage).toFixed(2);
     document.getElementById('valBenignPct').textContent = `${benignPct}% of all evaluated traffic`;
     document.getElementById('valAttackPct').textContent = `${kpis.attack_percentage}% Threat Ratio`;
+
+    // Explicit sample size notice populated from database
+    const sampleFlowsCountEl = document.getElementById('sampleFlowsCount');
+    if (sampleFlowsCountEl) sampleFlowsCountEl.textContent = formattedTotal;
+    const sampleCountBannerEl = document.getElementById('sampleCountBanner');
+    if (sampleCountBannerEl) sampleCountBannerEl.textContent = formattedTotal;
   }
 
   // Render Charts

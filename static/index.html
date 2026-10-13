@@ -22,7 +22,7 @@
       </div>
       <div>
         <h1 class="app-title">NIDS Intelligence Dashboard</h1>
-        <p class="app-subtitle">CICIDS2017 Exploratory Data Analysis & Threat Profiling</p>
+        <p class="app-subtitle" id="headerSubtitle">Charts are based on a sample of <span id="sampleFlowsCount">--</span> flows from the 2.83 million row CICIDS2017 dataset</p>
       </div>
     </div>
     <div class="header-right">
@@ -50,6 +50,20 @@
           <strong>Deployment Database Pending:</strong>
           <span> Run the ETL pipeline (<code>python -m etl.run_etl</code>) to ingest flows into <code>data/nids_full.db</code> and export <code>data/nids_deploy.db</code>.</span>
         </div>
+      </div>
+    </div>
+
+    <!-- Sample Notice Banner -->
+    <div class="sample-notice-banner" id="sampleNoticeBanner">
+      <div class="sample-notice-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="16" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+      </div>
+      <div class="sample-notice-text">
+        The dashboard charts and distributions are based on a representative sample of <span class="sample-count-badge" id="sampleCountBanner">--</span> network flows from the <strong>2.83 million row CICIDS2017 dataset</strong>.
       </div>
     </div>
 
