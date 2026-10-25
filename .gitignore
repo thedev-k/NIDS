@@ -3,9 +3,11 @@ __pycache__/
 *.pyc
 .env
 data/raw/
+data/raw_json/
 data/nids_full.db
 PROJECT_NOTES.md
 requirements-dev.txt
 *.pdf
 *.tex
 .agents
+logs/
